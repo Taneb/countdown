@@ -11,6 +11,8 @@ import Data.Maybe (mapMaybe)
 import Data.Text(Text)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
+import System.Exit (exitFailure)
+import System.Environment (getArgs)
 
 type Bag = M.Map Char Int
 
@@ -62,4 +64,19 @@ findBest :: [WordRec] -> [Text]
 findBest = sortBy (compare `on` T.length) . mapMaybe getWord
 
 main :: IO ()
-main = return ()
+main = do
+  args <- getArgs
+  if null args
+    then do
+      putStrLn "No dictionary loaded. Try in /usr/dict or /usr/share/dict"
+      exitFailure
+    else do
+      dict <- fmap concat $ mapM importDict args
+      mainLoop dict
+
+mainLoop :: [WordRec] -> IO ()
+mainLoop dict = do
+  putStr "> "
+  resp <- getLine
+  print $ findBest$ filterLetters resp (length resp) dict
+  mainLoop dict
