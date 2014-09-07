@@ -13,8 +13,9 @@ import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import System.Exit (exitSuccess, exitFailure)
 import System.Environment (getArgs)
-import System.IO (hFlush, hPutStrLn, stdout, stderr)
-import System.IO.Error (catchIOError, isEOFError)
+import System.IO (hFlush, hPutStr, hPutStrLn, stdout, stderr)
+import System.IO.Error (catchIOError, isEOFError, isDoesNotExistError,
+                       isAlreadyInUseError, isPermissionError, ioeGetFileName)
 
 type Bag = M.Map Char Int
 
@@ -49,7 +50,24 @@ check t | T.all isLower t = Just $ WordRec (toBag t) (T.length t)t
 
 importDict :: FilePath -> IO [WordRec]
 importDict fp = do
-  wordList <- T.readFile fp
+  wordList <- T.readFile fp `catchIOError` \e -> case () of
+    _ | isDoesNotExistError e -> hPutStr stderr fp >>
+                                 hPutStr stderr " does not exist. Are you su" >>
+                                 hPutStr stderr "re you typed the filename c" >>
+                                 hPutStrLn stderr "orrectly?" >>
+                                 exitFailure
+    _ | isAlreadyInUseError e -> hPutStr stderr fp >>
+                                 hPutStr stderr " is already in use. Is ther" >>
+                                 hPutStr stderr "e another program using it?" >>
+                                 hPutStrLn stderr "" >>
+                                 exitFailure
+    _ | isPermissionError   e -> hPutStr stderr "You do not have permission " >>
+                                 hPutStr stderr "to open " >>
+                                 hPutStr stderr fp >>
+                                 hPutStr stderr ". Check with a system admin" >>
+                                 hPutStrLn stderr "istrator." >>
+                                 exitFailure
+    _ -> ioError e
   return $!! mapMaybe check $ T.lines wordList
 
 filterLetter :: Char -> Int -> [WordRec] -> [WordRec]
