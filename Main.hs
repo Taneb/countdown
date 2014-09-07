@@ -13,6 +13,7 @@ import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import System.Exit (exitFailure)
 import System.Environment (getArgs)
+import System.IO (hFlush, stdout)
 
 type Bag = M.Map Char Int
 
@@ -77,6 +78,7 @@ main = do
 mainLoop :: [WordRec] -> IO ()
 mainLoop dict = do
   putStr "> "
+  hFlush stdout
   resp <- getLine
   print $ findBest$ filterLetters resp (length resp) dict
   mainLoop dict
