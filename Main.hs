@@ -22,14 +22,13 @@ type Bag = M.Map Char Int
 delete :: Char -> Bag -> Maybe Bag
 delete c b = case M.lookup c b of
   Nothing -> Nothing
-  Just n | n == 1 -> Just $ M.delete c b
-         | otherwise -> Just $ b & ix c -~ 1
+  Just 1  -> Just $ M.delete c b
+  _       -> Just $ b & ix c -~ 1
 
 toBag :: Text -> Bag
 toBag = T.foldl' (\b c -> M.insertWith (+) c 1 b) M.empty
 
 data WordRec = WordRec Bag Int Text
-  deriving Show
 
 instance NFData WordRec where
   rnf (WordRec b c w) = rnf b `seq` rnf c `seq` rnf w
@@ -45,28 +44,26 @@ getWord (WordRec _ 0 w) = Just w
 getWord _ = Nothing
 
 check :: Text -> Maybe WordRec
-check t | T.all isLower t = Just $ WordRec (toBag t) (T.length t)t
+check t | T.all isLower t = Just $ WordRec (toBag t) (T.length t) t
         | otherwise = Nothing
 
 importDict :: FilePath -> IO [WordRec]
 importDict fp = do
   wordList <- T.readFile fp `catchIOError` \e -> case () of
-    _ | isDoesNotExistError e -> hPutStr stderr fp >>
-                                 hPutStr stderr " does not exist. Are you su" >>
-                                 hPutStr stderr "re you typed the filename c" >>
-                                 hPutStrLn stderr "orrectly?" >>
-                                 exitFailure
-    _ | isAlreadyInUseError e -> hPutStr stderr fp >>
-                                 hPutStr stderr " is already in use. Is ther" >>
-                                 hPutStr stderr "e another program using it?" >>
-                                 hPutStrLn stderr "" >>
-                                 exitFailure
-    _ | isPermissionError   e -> hPutStr stderr "You do not have permission " >>
-                                 hPutStr stderr "to open " >>
-                                 hPutStr stderr fp >>
-                                 hPutStr stderr ". Check with a system admin" >>
-                                 hPutStrLn stderr "istrator." >>
-                                 exitFailure
+    _ | isDoesNotExistError e -> do
+      hPutStr stderr fp
+      hPutStr stderr " does not exist. Are you sure you typed the filename corr"
+      hPutStrLn stderr "ectly?"
+      exitFailure
+    _ | isAlreadyInUseError e -> do
+      hPutStr stderr fp
+      hPutStrLn stderr " is already in use. Is there another program using it?"
+      exitFailure
+    _ | isPermissionError e -> do
+      hPutStr stderr "You do not have permission to open"
+      hPutStr stderr fp
+      hPutStrLn stderr ". Check with a system administrator."
+      exitFailure
     _ -> ioError e
   return $!! mapMaybe check $ T.lines wordList
 
@@ -78,7 +75,8 @@ filterLetter k c wrs = do
     Just wr' -> return (wr' & count -~ 1)
 
 filterLetters :: [Char] -> Int -> [WordRec] -> [WordRec]
-filterLetters ks c wrs = foldl' (\wrs' (k,r) -> filterLetter k r wrs') wrs $ zip ks [c,c-1..]
+filterLetters ks c wrs = foldl' (\wrs' (k,r) -> filterLetter k r wrs') wrs $
+                         zip ks [c,c-1..]
 
 findBest :: [WordRec] -> [Text]
 findBest = sortBy (compare `on` T.length) . mapMaybe getWord
@@ -104,5 +102,5 @@ mainLoop dict = do
       putChar '\n'
       exitSuccess
     else ioError e
-  print $ findBest$ filterLetters resp (length resp) dict
+  print . findBest $ filterLetters resp (length resp) dict
   mainLoop dict
