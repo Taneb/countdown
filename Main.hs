@@ -11,9 +11,10 @@ import Data.Maybe (mapMaybe)
 import Data.Text(Text)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
-import System.Exit (exitFailure)
+import System.Exit (exitSuccess, exitFailure)
 import System.Environment (getArgs)
 import System.IO (hFlush, stdout)
+import System.IO.Error (catchIOError, isEOFError)
 
 type Bag = M.Map Char Int
 
@@ -79,6 +80,11 @@ mainLoop :: [WordRec] -> IO ()
 mainLoop dict = do
   putStr "> "
   hFlush stdout
-  resp <- getLine
+  resp <- catchIOError getLine $ \e ->
+    if isEOFError e
+    then do
+      putChar '\n'
+      exitSuccess
+    else ioError e
   print $ findBest$ filterLetters resp (length resp) dict
   mainLoop dict
