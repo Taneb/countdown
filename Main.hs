@@ -13,7 +13,7 @@ import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import System.Exit (exitSuccess, exitFailure)
 import System.Environment (getArgs)
-import System.IO (hFlush, stdout)
+import System.IO (hFlush, hPutStrLn, stdout, stderr)
 import System.IO.Error (catchIOError, isEOFError)
 
 type Bag = M.Map Char Int
@@ -70,7 +70,7 @@ main = do
   args <- getArgs
   if null args
     then do
-      putStrLn "No dictionary loaded. Try in /usr/dict or /usr/share/dict"
+      hPutStrLn stderr "No dictionary loaded. Try in /usr/dict or /usr/share/dict"
       exitFailure
     else do
       dict <- fmap concat $ mapM importDict args
